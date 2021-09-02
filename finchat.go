@@ -48,7 +48,7 @@ func createCustomer(c *fiber.Ctx) error {
 
     cus := customer.Create(body.Email, body.StripeCreditCardToken)
     log.Println(cus.ID)
-    return c.JSON(struct{ stripeCustomerID string }{ cus.ID })
+    return c.JSON(struct{ StripeCustomerID string `json:"stripeCustomerID"` }{ cus.ID })
 }
 
 // new payment charge
