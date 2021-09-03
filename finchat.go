@@ -26,7 +26,7 @@ func main() {
     app.Post("/api/payments", createPayment)
     app.Get("/api/payments/:customerId", paymentsByCustomer)
 
-    app.Listen(os.Getenv("LISTEN"))
+    app.Listen("0.0.0.0:" + os.Getenv("PORT"))
 }
 
 // Create new customer
