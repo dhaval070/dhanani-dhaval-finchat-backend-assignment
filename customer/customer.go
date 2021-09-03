@@ -5,7 +5,7 @@ import (
     "log"
 )
 
-func Create(email string, token string) *stripe.Customer {
+func Create(email string, token string) (*stripe.Customer, *stripe.Error) {
     log.Println("create customer " + email + ", " + token)
 
     c, err := customer.New(&stripe.CustomerParams{
@@ -16,7 +16,8 @@ func Create(email string, token string) *stripe.Customer {
     })
 
     if err != nil {
-        panic(err)
+        return nil, err.(*stripe.Error)
     }
-    return c
+    return c, nil
 }
+

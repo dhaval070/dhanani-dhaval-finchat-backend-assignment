@@ -1,12 +1,12 @@
 package main
 import (
-    "log"
     "os"
     "github.com/gofiber/fiber/v2"
     "github.com/gofiber/fiber/v2/middleware/recover"
     "github.com/stripe/stripe-go"
     _ "finchat/dotenv"
     "finchat/customer"
+    "finchat/paymentintent"
 )
 
 func init() {
@@ -33,7 +33,7 @@ func main() {
 func createCustomer(c *fiber.Ctx) error {
     type Body struct {
         Email string `json:"email"`
-        StripeCreditCardToken string `json: "stripeCreditCardToken"`
+        Token string `json:"stripeCreditCardToken"`
     }
 
     var body = new(Body)
@@ -42,23 +42,65 @@ func createCustomer(c *fiber.Ctx) error {
         return err
     }
 
-    if body.Email == "" || body.StripeCreditCardToken == "" {
-        return fiber.NewError(402, "Validation error")
+    if body.Email == "" || body.Token == "" {
+        return fiber.NewError(400, "Validation error")
     }
 
-    cus := customer.Create(body.Email, body.StripeCreditCardToken)
-    log.Println(cus.ID)
+    cus, err := customer.Create(body.Email, body.Token)
+    if err != nil {
+        return fiber.NewError(err.HTTPStatusCode, err.Error())
+    }
+
     return c.JSON(struct{ StripeCustomerID string `json:"stripeCustomerID"` }{ cus.ID })
 }
 
 // new payment charge
 func createPayment(c *fiber.Ctx) error {
+    type Body struct {
+        CustomerId string `json:"stripeCustomerID"`
+        Amount int64 `json:"amount"`
+    }
 
-    return c.Send([]byte("payment"))
+    var body = new(Body)
+    if err := c.BodyParser(body); err != nil {
+        return err
+    }
+
+    if body.CustomerId == "" || body.Amount == 0 {
+        return fiber.NewError(400, "Validation error")
+    }
+
+    intent, err := paymentintent.Create(body.CustomerId, body.Amount)
+    if err != nil {
+        return fiber.NewError(err.HTTPStatusCode, err.Error())
+    }
+
+    return c.JSON(struct {  PaymentIntentID string `json:"paymentIntentID"` }{ intent.ID })
 }
 
 // retrieves all payments for given customer
 func paymentsByCustomer(c *fiber.Ctx) error {
 
-    return c.Send([]byte("payment"))
+    var customerId = c.Params("customerId")
+
+    piList := paymentintent.ListByCustomer(customerId)
+
+    type Payment struct {
+        Id string `json:"id"`
+        Amount int64 `json:"amount"`
+    }
+
+    var payments []Payment
+
+    for _, pi := range piList {
+        payments = append(payments, Payment {
+            pi.ID,
+            pi.Amount,
+        })
+    }
+
+    type Response struct {
+        Payments []Payment `json:"payments"`
+    }
+    return c.JSON(Response{ payments })
 }
