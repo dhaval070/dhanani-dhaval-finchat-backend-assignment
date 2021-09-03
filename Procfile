@@ -1,1 +1,1 @@
-web: go build && ./finchat
+web: finchat
